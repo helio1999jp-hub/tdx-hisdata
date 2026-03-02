@@ -1,0 +1,41 @@
+name: TDX Data Auto Update
+
+on:
+  schedule:
+    # 国际标准时间 07:35 等于北京时间 15:35
+    - cron: '35 7 * * *'
+  workflow_dispatch: # 支持手动点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # 授予写入权限，以便更新 Release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run Downloader
+        run: python fetch_tdx.py
+
+      - name: Update GitHub Release
+        # 只有当文件存在时才执行上传
+        if: hashFiles('tdx_data.zip') != ''
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest-data
+          files: tdx_data.zip
+          name: "最新行情数据备份"
+          body: "自动更新于 ${{ github.event.head_commit.timestamp }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
